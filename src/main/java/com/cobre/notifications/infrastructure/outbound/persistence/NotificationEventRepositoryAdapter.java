@@ -67,6 +67,20 @@ public class NotificationEventRepositoryAdapter implements NotificationEventRepo
         return repository.moveRetryScheduledToPending(eventId) == 1;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotificationEvent> findAbandoned(DeliveryStatus status, Instant updatedBefore, int limit) {
+        return repository.findByDeliveryStatusAndUpdatedAtLessThanOrderByUpdatedAtAsc(
+                        status, updatedBefore, PageRequest.of(0, limit))
+                .stream().map(NotificationEventEntity::toDomain).toList();
+    }
+
+    @Override
+    @Transactional
+    public boolean recoverIfStale(String eventId, DeliveryStatus expectedStatus, Instant updatedBefore) {
+        return repository.recoverIfStale(eventId, expectedStatus, updatedBefore) == 1;
+    }
+
 
     @Override
     public NotificationEvent save(NotificationEvent event) {

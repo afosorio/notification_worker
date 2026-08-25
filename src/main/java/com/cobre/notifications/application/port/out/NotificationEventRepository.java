@@ -20,6 +20,12 @@ public interface NotificationEventRepository {
 
     boolean moveRetryScheduledToPending(String eventId);
 
+    List<NotificationEvent> findAbandoned(com.cobre.notifications.domain.DeliveryStatus status,
+                                          Instant updatedBefore, int limit);
+
+    boolean recoverIfStale(String eventId, com.cobre.notifications.domain.DeliveryStatus expectedStatus,
+                           Instant updatedBefore);
+
     NotificationEvent save(NotificationEvent event);
 
     record SearchCriteria(

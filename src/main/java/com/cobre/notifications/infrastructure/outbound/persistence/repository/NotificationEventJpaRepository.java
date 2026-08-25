@@ -41,4 +41,18 @@ public interface NotificationEventJpaRepository extends JpaRepository<Notificati
             + "and e.deliveryStatus = com.cobre.notifications.domain.DeliveryStatus.RETRY_SCHEDULED "
             + "and e.nextRetryAt <= current_timestamp")
     int moveRetryScheduledToPending(@Param("eventId") String eventId);
+
+    List<NotificationEventEntity> findByDeliveryStatusAndUpdatedAtLessThanOrderByUpdatedAtAsc(
+            com.cobre.notifications.domain.DeliveryStatus deliveryStatus, Instant updatedBefore, Pageable pageable);
+
+    @Modifying
+    @Query("update NotificationEventEntity e "
+            + "set e.deliveryStatus = com.cobre.notifications.domain.DeliveryStatus.PENDING, "
+            + "e.nextRetryAt = null, e.updatedAt = current_timestamp "
+            + "where e.eventId = :eventId "
+            + "and e.deliveryStatus = :expectedStatus "
+            + "and e.updatedAt < :updatedBefore")
+    int recoverIfStale(@Param("eventId") String eventId,
+                       @Param("expectedStatus") com.cobre.notifications.domain.DeliveryStatus expectedStatus,
+                       @Param("updatedBefore") Instant updatedBefore);
 }
