@@ -9,6 +9,9 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.net.URI;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 
 @Component
 public class HttpWebhookClient implements WebhookClient {
@@ -27,16 +30,45 @@ public class HttpWebhookClient implements WebhookClient {
     @Override
     public DeliveryResult deliver(NotificationEvent event) {
         try {
-            restClient.post()
+            return restClient.post()
                     .uri(webhookUri)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(new WebhookPayload(event.eventId(), event.clientId(), event.eventType(), event.content()))
-                    .retrieve()
-                    .toBodilessEntity();
-            return DeliveryResult.success();
+                    .exchange((request, response) -> {
+                        int status = response.getStatusCode().value();
+                        if (status >= 200 && status < 300) {
+                            return DeliveryResult.success();
+                        }
+                        boolean retryable = status == 408 || status == 429 || status == 500
+                                || status == 502 || status == 503 || status == 504;
+                        return DeliveryResult.failure(retryable, "Webhook returned HTTP " + status,
+                                status == 429 ? parseRetryAfter(response.getHeaders().getFirst("Retry-After")) : null);
+                    });
         } catch (RestClientException | IllegalArgumentException exception) {
-            return DeliveryResult.failure(exception.getMessage());
+            return DeliveryResult.failure(true, sanitize(exception.getMessage()), null);
         }
+    }
+
+    private Instant parseRetryAfter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.now().plusSeconds(Long.parseLong(value));
+        } catch (NumberFormatException ignored) {
+            try {
+                return ZonedDateTime.parse(value).toInstant();
+            } catch (DateTimeParseException ignoredDate) {
+                return null;
+            }
+        }
+    }
+
+    private String sanitize(String message) {
+        if (message == null || message.isBlank()) {
+            return "Webhook delivery failed";
+        }
+        return message.length() <= 500 ? message : message.substring(0, 500);
     }
 
     private record WebhookPayload(String eventId, String clientId, String eventType, String content) {

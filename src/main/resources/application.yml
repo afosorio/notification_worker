@@ -19,5 +19,9 @@ server:
 notification:
   queue:
     poll-delay-ms: ${NOTIFICATION_QUEUE_POLL_DELAY_MS:1000}
+  retry:
+    max-attempts: ${MAX_ATTEMPTS:3}
+    initial-delay: ${INITIAL_RETRY_DELAY:PT1S}
+    max-delay: ${MAX_RETRY_DELAY:PT1M}
   webhook:
     url: ${NOTIFICATION_WEBHOOK_URL:https://localhost:8443/webhook}

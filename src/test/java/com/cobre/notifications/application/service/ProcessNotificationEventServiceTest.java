@@ -10,6 +10,7 @@ import com.cobre.notifications.domain.SubscriptionStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,7 +25,8 @@ class ProcessNotificationEventServiceTest {
     private final SubscriptionRepository subscriptions = mock(SubscriptionRepository.class);
     private final WebhookClient webhook = mock(WebhookClient.class);
     private final ProcessNotificationEventService service =
-            new ProcessNotificationEventService(events, subscriptions, webhook);
+            new ProcessNotificationEventService(events, subscriptions, webhook, 3,
+                    Duration.ofSeconds(1), Duration.ofMinutes(1));
 
     @Test
     void marksEventCompletedAfterSuccessfulDelivery() {
