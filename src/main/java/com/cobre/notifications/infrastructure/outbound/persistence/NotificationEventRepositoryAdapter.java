@@ -44,6 +44,7 @@ public class NotificationEventRepositoryAdapter implements NotificationEventRepo
         return repository.replayIfFailed(eventId) == 1;
     }
 
+
     @Override
     public NotificationEvent save(NotificationEvent event) {
         return repository.save(NotificationEventEntity.fromDomain(event)).toDomain();
