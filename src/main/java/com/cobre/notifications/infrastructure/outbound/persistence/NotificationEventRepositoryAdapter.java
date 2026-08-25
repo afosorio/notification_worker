@@ -39,8 +39,9 @@ public class NotificationEventRepositoryAdapter implements NotificationEventRepo
     }
 
     @Override
+    @Transactional
     public boolean replayIfFailed(String eventId) {
-        throw new UnsupportedOperationException("Replay is implemented in the replay step");
+        return repository.replayIfFailed(eventId) == 1;
     }
 
     @Override

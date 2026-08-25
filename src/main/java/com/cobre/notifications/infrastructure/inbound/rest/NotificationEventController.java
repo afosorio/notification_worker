@@ -2,6 +2,7 @@ package com.cobre.notifications.infrastructure.inbound.rest;
 
 import com.cobre.notifications.application.port.in.GetNotificationEventDetail;
 import com.cobre.notifications.application.port.in.GetNotificationEvents;
+import com.cobre.notifications.application.port.in.ReplayNotification;
 import com.cobre.notifications.application.port.out.NotificationEventRepository;
 import com.cobre.notifications.domain.NotificationEvent;
 import com.cobre.notifications.domain.DeliveryStatus;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,11 +23,14 @@ public class NotificationEventController {
 
     private final GetNotificationEvents getNotificationEvents;
     private final GetNotificationEventDetail getNotificationEventDetail;
+    private final ReplayNotification replayNotification;
 
     public NotificationEventController(GetNotificationEvents getNotificationEvents,
-                                       GetNotificationEventDetail getNotificationEventDetail) {
+                                       GetNotificationEventDetail getNotificationEventDetail,
+                                       ReplayNotification replayNotification) {
         this.getNotificationEvents = getNotificationEvents;
         this.getNotificationEventDetail = getNotificationEventDetail;
+        this.replayNotification = replayNotification;
     }
 
     @GetMapping
@@ -54,6 +59,12 @@ public class NotificationEventController {
         return getNotificationEventDetail.execute(eventId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{eventId}/replay")
+    public ResponseEntity<Void> replay(@PathVariable String eventId) {
+        replayNotification.execute(eventId);
+        return ResponseEntity.accepted().build();
     }
 
     private void validate(String clientId, Instant from, Instant to, int page, int pageSize) {
