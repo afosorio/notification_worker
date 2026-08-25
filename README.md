@@ -22,7 +22,17 @@ Aplicación Spring Boot para el MVP de notificaciones.
    mvn spring-boot:run
    ```
 
-La API queda disponible en `http://localhost:8080`. La conexión a MySQL y la URL del webhook se pueden sobrescribir mediante `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `NOTIFICATION_WEBHOOK_URL`.
+La API queda disponible en `http://localhost:8080`. La conexión a MySQL y la configuración operativa se pueden sobrescribir mediante:
+
+```text
+DB_URL, DB_USERNAME, DB_PASSWORD
+WEBHOOK_URL
+WEBHOOK_CONNECT_TIMEOUT, WEBHOOK_READ_TIMEOUT, MAX_CONCURRENT_WEBHOOK_REQUESTS
+MAX_ATTEMPTS, INITIAL_RETRY_DELAY, MAX_RETRY_DELAY
+PENDING_RECOVERY_TIMEOUT, RETRY_SCHEDULER_BATCH_SIZE, RECOVERY_BATCH_SIZE
+```
+
+El estado de la aplicación está disponible en `GET /actuator/health` y las métricas en `/actuator/metrics`.
 
 ## API de demo
 
