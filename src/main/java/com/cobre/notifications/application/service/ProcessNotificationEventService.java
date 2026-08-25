@@ -96,7 +96,7 @@ public class ProcessNotificationEventService implements ProcessNotificationEvent
             return retryAfter;
         }
         long exponentialSeconds = Math.min(maxDelay.toSeconds(),
-                initialDelay.toSeconds() * (1L << Math.min(attemptCount - 1, 30)));
+                initialDelay.toSeconds() * (1L << Math.min(Math.max(0, attemptCount - 1), 30)));
         long jitter = Math.max(1, exponentialSeconds / 4);
         long adjustedSeconds = Math.max(0, exponentialSeconds
                 + ThreadLocalRandom.current().nextLong(-jitter, jitter + 1));

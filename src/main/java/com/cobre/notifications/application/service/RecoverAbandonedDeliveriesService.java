@@ -4,6 +4,7 @@ import com.cobre.notifications.application.port.in.RecoverAbandonedDeliveriesUse
 import com.cobre.notifications.application.port.out.NotificationEventRepository;
 import com.cobre.notifications.application.port.out.NotificationQueue;
 import com.cobre.notifications.domain.DeliveryStatus;
+import com.cobre.notifications.infrastructure.config.DeliveryMetrics;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,13 +17,16 @@ public class RecoverAbandonedDeliveriesService implements RecoverAbandonedDelive
     private final NotificationEventRepository repository;
     private final NotificationQueue queue;
     private final Duration timeout;
+    private final DeliveryMetrics metrics;
 
     public RecoverAbandonedDeliveriesService(NotificationEventRepository repository,
                                              NotificationQueue queue,
-                                             @org.springframework.beans.factory.annotation.Value("${notification.recovery.timeout:PT5M}") Duration timeout) {
+                                             @org.springframework.beans.factory.annotation.Value("${notification.recovery.timeout:PT5M}") Duration timeout,
+                                             DeliveryMetrics metrics) {
         this.repository = repository;
         this.queue = queue;
         this.timeout = timeout;
+        this.metrics = metrics;
     }
 
     @Override
@@ -39,6 +43,7 @@ public class RecoverAbandonedDeliveriesService implements RecoverAbandonedDelive
         for (var event : repository.findAbandoned(status, cutoff, batchSize)) {
             if (repository.recoverIfStale(event.eventId(), status, cutoff)) {
                 queue.publish(event.eventId());
+                metrics.recordRecovery();
                 recovered++;
             }
         }
