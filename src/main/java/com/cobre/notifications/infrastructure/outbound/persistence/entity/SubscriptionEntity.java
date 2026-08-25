@@ -5,8 +5,6 @@ import com.cobre.notifications.domain.SubscriptionStatus;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -17,8 +15,7 @@ import java.time.Instant;
 public class SubscriptionEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long subscriptionId;
+    private String subscriptionId;
     private String clientId;
     @Enumerated(EnumType.STRING)
     private SubscriptionStatus status;
@@ -28,8 +25,9 @@ public class SubscriptionEntity {
     protected SubscriptionEntity() {
     }
 
-    public static SubscriptionEntity active(String clientId, Instant now) {
+    public static SubscriptionEntity active(String subscriptionId, String clientId, Instant now) {
         var entity = new SubscriptionEntity();
+        entity.subscriptionId = subscriptionId;
         entity.clientId = clientId;
         entity.status = SubscriptionStatus.ACTIVE;
         entity.createdAt = now;

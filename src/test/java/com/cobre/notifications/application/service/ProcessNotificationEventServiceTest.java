@@ -55,6 +55,6 @@ class ProcessNotificationEventServiceTest {
 
     private Subscription activeSubscription() {
         var now = Instant.parse("2024-03-15T11:20:18Z");
-        return new Subscription(1L, "CLIENT002", SubscriptionStatus.ACTIVE, now, now);
+        return new Subscription("SUB-1", "CLIENT002", SubscriptionStatus.ACTIVE, now, now);
     }
 }

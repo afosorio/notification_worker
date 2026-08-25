@@ -46,7 +46,7 @@ public class FixtureImporter {
                             DeliveryStatus.valueOf(event.deliveryStatus().toUpperCase()),
                             0, null, null, now, now)));
             if (subscriptionRepository.findByClientId(event.clientId()).isEmpty()) {
-                subscriptionRepository.save(SubscriptionEntity.active(event.clientId(), now));
+                subscriptionRepository.save(SubscriptionEntity.active("SUB-" + event.clientId(), event.clientId(), now));
             }
         });
     }
