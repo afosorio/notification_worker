@@ -3,6 +3,7 @@ package com.cobre.notifications.application.port.out;
 import com.cobre.notifications.domain.NotificationEvent;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface NotificationEventRepository {
@@ -14,6 +15,10 @@ public interface NotificationEventRepository {
     boolean replayIfFailed(String eventId);
 
     boolean claimPending(String eventId);
+
+    List<NotificationEvent> findRetryable(Instant now, int limit);
+
+    boolean moveRetryScheduledToPending(String eventId);
 
     NotificationEvent save(NotificationEvent event);
 

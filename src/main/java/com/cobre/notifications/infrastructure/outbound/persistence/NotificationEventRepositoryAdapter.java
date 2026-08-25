@@ -12,6 +12,9 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.time.Instant;
+import java.util.List;
+import org.springframework.data.domain.PageRequest;
 
 @Repository
 public class NotificationEventRepositoryAdapter implements NotificationEventRepository {
@@ -48,6 +51,20 @@ public class NotificationEventRepositoryAdapter implements NotificationEventRepo
     @Transactional
     public boolean claimPending(String eventId) {
         return repository.claimPending(eventId) == 1;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotificationEvent> findRetryable(Instant now, int limit) {
+        return repository.findByDeliveryStatusAndNextRetryAtLessThanEqualOrderByNextRetryAtAscUpdatedAtAsc(
+                        DeliveryStatus.RETRY_SCHEDULED, now, PageRequest.of(0, limit))
+                .stream().map(NotificationEventEntity::toDomain).toList();
+    }
+
+    @Override
+    @Transactional
+    public boolean moveRetryScheduledToPending(String eventId) {
+        return repository.moveRetryScheduledToPending(eventId) == 1;
     }
 
 

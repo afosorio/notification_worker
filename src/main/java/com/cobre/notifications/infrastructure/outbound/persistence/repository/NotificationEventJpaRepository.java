@@ -6,6 +6,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
+import java.time.Instant;
+import java.util.List;
 
 public interface NotificationEventJpaRepository extends JpaRepository<NotificationEventEntity, String>,
         JpaSpecificationExecutor<NotificationEventEntity> {
@@ -26,4 +29,16 @@ public interface NotificationEventJpaRepository extends JpaRepository<Notificati
             + "where e.eventId = :eventId "
             + "and e.deliveryStatus = com.cobre.notifications.domain.DeliveryStatus.PENDING")
     int claimPending(@Param("eventId") String eventId);
+
+    List<NotificationEventEntity> findByDeliveryStatusAndNextRetryAtLessThanEqualOrderByNextRetryAtAscUpdatedAtAsc(
+            com.cobre.notifications.domain.DeliveryStatus deliveryStatus, Instant now, Pageable pageable);
+
+    @Modifying
+    @Query("update NotificationEventEntity e "
+            + "set e.deliveryStatus = com.cobre.notifications.domain.DeliveryStatus.PENDING, "
+            + "e.nextRetryAt = null, e.updatedAt = current_timestamp "
+            + "where e.eventId = :eventId "
+            + "and e.deliveryStatus = com.cobre.notifications.domain.DeliveryStatus.RETRY_SCHEDULED "
+            + "and e.nextRetryAt <= current_timestamp")
+    int moveRetryScheduledToPending(@Param("eventId") String eventId);
 }
