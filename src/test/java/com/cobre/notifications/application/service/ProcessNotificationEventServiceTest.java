@@ -5,6 +5,7 @@ import com.cobre.notifications.application.port.out.SubscriptionRepository;
 import com.cobre.notifications.application.port.out.WebhookClient;
 import com.cobre.notifications.domain.DeliveryStatus;
 import com.cobre.notifications.domain.NotificationEvent;
+import com.cobre.notifications.domain.RetryPolicy;
 import com.cobre.notifications.domain.Subscription;
 import com.cobre.notifications.domain.SubscriptionStatus;
 import com.cobre.notifications.infrastructure.config.DeliveryMetrics;
@@ -33,8 +34,8 @@ class ProcessNotificationEventServiceTest {
     private final WebhookClient webhook = mock(WebhookClient.class);
     private final DeliveryMetrics metrics = new DeliveryMetrics(new SimpleMeterRegistry());
     private final ProcessNotificationEventService service =
-            new ProcessNotificationEventService(events, subscriptions, webhook, 3,
-                    Duration.ofSeconds(1), Duration.ofMinutes(1), metrics);
+            new ProcessNotificationEventService(events, subscriptions, webhook,
+                    new RetryPolicy(3, Duration.ofSeconds(1), Duration.ofMinutes(1)), metrics);
 
     @Test
     void marksEventCompletedAfterSuccessfulDelivery() {
