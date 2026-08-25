@@ -2,6 +2,7 @@ package com.cobre.notifications.infrastructure.outbound.http;
 
 import com.cobre.notifications.application.port.out.WebhookClient;
 import com.cobre.notifications.domain.NotificationEvent;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -33,7 +34,7 @@ public class HttpWebhookClient implements WebhookClient {
             return restClient.post()
                     .uri(webhookUri)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(new WebhookPayload(event.eventId(), event.clientId(), event.eventType(), event.content()))
+                    .body(new WebhookPayload(event.eventId(), event.eventType(), event.content(), event.clientId()))
                     .exchange((request, response) -> {
                         int status = response.getStatusCode().value();
                         if (status >= 200 && status < 300) {
@@ -71,6 +72,10 @@ public class HttpWebhookClient implements WebhookClient {
         return message.length() <= 500 ? message : message.substring(0, 500);
     }
 
-    private record WebhookPayload(String eventId, String clientId, String eventType, String content) {
+    private record WebhookPayload(
+            @JsonProperty("event_id") String eventId,
+            @JsonProperty("event_type") String eventType,
+            String content,
+            @JsonProperty("client_id") String clientId) {
     }
 }

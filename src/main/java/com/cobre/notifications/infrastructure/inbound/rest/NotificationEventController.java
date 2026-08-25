@@ -6,6 +6,7 @@ import com.cobre.notifications.application.port.in.ReplayNotification;
 import com.cobre.notifications.application.port.out.NotificationEventRepository;
 import com.cobre.notifications.domain.NotificationEvent;
 import com.cobre.notifications.domain.DeliveryStatus;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,19 +45,24 @@ public class NotificationEventController {
         validate(clientId, from, to, page, pageSize);
         if (deliveryStatus != null) {
             try {
-                deliveryStatus = DeliveryStatus.valueOf(deliveryStatus.toUpperCase()).name();
+                var parsedStatus = DeliveryStatus.valueOf(deliveryStatus.toUpperCase());
+                if (parsedStatus != DeliveryStatus.COMPLETED && parsedStatus != DeliveryStatus.FAILED) {
+                    throw new InvalidRequestException("deliveryStatus is invalid");
+                }
+                deliveryStatus = parsedStatus.name();
             } catch (IllegalArgumentException exception) {
                 throw new InvalidRequestException("deliveryStatus is invalid");
             }
         }
         var result = getNotificationEvents.execute(new NotificationEventRepository.SearchCriteria(
                 clientId, deliveryStatus, from, to, page, pageSize));
-        return new EventListResponse(result.items(), result.page(), result.pageSize());
+        return new EventListResponse(result.items().stream().map(EventResponse::from).toList(), result.page(), result.pageSize());
     }
 
     @GetMapping("/{eventId}")
-    public ResponseEntity<NotificationEvent> detail(@PathVariable String eventId) {
+    public ResponseEntity<EventResponse> detail(@PathVariable String eventId) {
         return getNotificationEventDetail.execute(eventId)
+                .map(EventResponse::from)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -84,6 +90,20 @@ public class NotificationEventController {
         }
     }
 
-    public record EventListResponse(java.util.List<NotificationEvent> events, int page, int pageSize) {
+    public record EventListResponse(java.util.List<EventResponse> events, int page, int pageSize) {
+    }
+
+    public record EventResponse(
+            @JsonProperty("event_id") String eventId,
+            @JsonProperty("event_type") String eventType,
+            String content,
+            @JsonProperty("delivery_date") Instant deliveryDate,
+            @JsonProperty("delivery_status") String deliveryStatus,
+            @JsonProperty("client_id") String clientId) {
+
+        static EventResponse from(NotificationEvent event) {
+            return new EventResponse(event.eventId(), event.eventType(), event.content(), event.deliveryDate(),
+                    event.deliveryStatus().name().toLowerCase(), event.clientId());
+        }
     }
 }
