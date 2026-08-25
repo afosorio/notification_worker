@@ -26,7 +26,10 @@ notification:
     scheduler-delay-ms: ${RETRY_SCHEDULER_DELAY_MS:1000}
     scheduler-batch-size: ${RETRY_SCHEDULER_BATCH_SIZE:50}
   webhook:
-    url: ${NOTIFICATION_WEBHOOK_URL:https://localhost:8443/webhook}
+    url: ${WEBHOOK_URL:https://example.com/webhook}
+    connect-timeout: ${WEBHOOK_CONNECT_TIMEOUT:PT2S}
+    read-timeout: ${WEBHOOK_READ_TIMEOUT:PT5S}
+    max-concurrent: ${MAX_CONCURRENT_WEBHOOK_REQUESTS:16}
   recovery:
     timeout: ${PENDING_RECOVERY_TIMEOUT:PT5M}
     batch-size: ${RECOVERY_BATCH_SIZE:50}

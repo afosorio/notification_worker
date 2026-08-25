@@ -8,28 +8,48 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
 import java.net.URI;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Instant;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class HttpWebhookClient implements WebhookClient {
 
     private final RestClient restClient;
     private final URI webhookUri;
+    private final Semaphore concurrencyLimit;
 
-    public HttpWebhookClient(@Value("${notification.webhook.url}") String webhookUrl) {
+    public HttpWebhookClient(@Value("${notification.webhook.url}") String webhookUrl,
+                             @Value("${notification.webhook.connect-timeout:PT2S}") Duration connectTimeout,
+                             @Value("${notification.webhook.read-timeout:PT5S}") Duration readTimeout,
+                             @Value("${notification.webhook.max-concurrent:16}") int maxConcurrent) {
         this.webhookUri = URI.create(webhookUrl);
-        if (!"https".equalsIgnoreCase(webhookUri.getScheme())) {
-            throw new IllegalArgumentException("Webhook URL must use HTTPS");
-        }
-        this.restClient = RestClient.builder().build();
+        validateDestination(webhookUri);
+        var requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(connectTimeout);
+        requestFactory.setReadTimeout(readTimeout);
+        this.restClient = RestClient.builder().requestFactory(requestFactory).build();
+        this.concurrencyLimit = new Semaphore(maxConcurrent);
     }
 
     @Override
     public DeliveryResult deliver(NotificationEvent event) {
+        try {
+            if (!concurrencyLimit.tryAcquire(1, 100, TimeUnit.MILLISECONDS)) {
+                return DeliveryResult.failure(true, "Webhook concurrency limit reached", null);
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return DeliveryResult.failure(true, "Webhook delivery interrupted", null);
+        }
         try {
             return restClient.post()
                     .uri(webhookUri)
@@ -47,6 +67,26 @@ public class HttpWebhookClient implements WebhookClient {
                     });
         } catch (RestClientException | IllegalArgumentException exception) {
             return DeliveryResult.failure(true, sanitize(exception.getMessage()), null);
+        } finally {
+            concurrencyLimit.release();
+        }
+    }
+
+    private void validateDestination(URI uri) {
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
+                || uri.getUserInfo() != null || uri.getHost().isBlank()) {
+            throw new IllegalArgumentException("Webhook URL must be an HTTPS URL without credentials");
+        }
+        try {
+            for (var address : InetAddress.getAllByName(uri.getHost())) {
+                if (address.isAnyLocalAddress() || address.isLoopbackAddress()
+                        || address.isLinkLocalAddress() || address.isSiteLocalAddress()
+                        || address.getHostAddress().startsWith("169.254.")) {
+                    throw new IllegalArgumentException("Webhook URL resolves to a private or local address");
+                }
+            }
+        } catch (UnknownHostException exception) {
+            throw new IllegalArgumentException("Webhook host cannot be resolved", exception);
         }
     }
 
