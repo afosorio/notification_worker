@@ -1,0 +1,22 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: notification-worker-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: notifications
+      MYSQL_USER: notifications
+      MYSQL_PASSWORD: notifications
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - notification-worker-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "notifications", "-pnotifications"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  notification-worker-mysql-data:

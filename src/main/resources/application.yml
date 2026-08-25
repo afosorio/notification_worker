@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: notification-worker
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/notifications?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:notifications}
+    password: ${DB_PASSWORD:notifications}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+notification:
+  webhook:
+    url: ${NOTIFICATION_WEBHOOK_URL:https://localhost:8443/webhook}
