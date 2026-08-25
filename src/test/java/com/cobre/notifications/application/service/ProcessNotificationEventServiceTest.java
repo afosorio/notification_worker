@@ -73,10 +73,44 @@ class ProcessNotificationEventServiceTest {
         verify(webhook, times(1)).deliver(event);
     }
 
+    @Test
+    void retryableFailureSchedulesAnotherAttempt() {
+        var event = pendingEventWithAttempts(0);
+        when(events.findById(event.eventId())).thenReturn(Optional.of(event));
+        when(events.claimPending(event.eventId())).thenReturn(true);
+        when(subscriptions.findByClientId(event.clientId())).thenReturn(Optional.of(activeSubscription()));
+        when(webhook.deliver(event)).thenReturn(WebhookClient.DeliveryResult.failure(true, "timeout", null));
+
+        service.execute(event.eventId());
+
+        var saved = org.mockito.ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(events).save(saved.capture());
+        assertEquals(DeliveryStatus.RETRY_SCHEDULED, saved.getValue().deliveryStatus());
+    }
+
+    @Test
+    void retryableFailureAfterMaxAttemptsBecomesFailed() {
+        var event = pendingEventWithAttempts(3);
+        when(events.findById(event.eventId())).thenReturn(Optional.of(event));
+        when(events.claimPending(event.eventId())).thenReturn(true);
+        when(subscriptions.findByClientId(event.clientId())).thenReturn(Optional.of(activeSubscription()));
+        when(webhook.deliver(event)).thenReturn(WebhookClient.DeliveryResult.failure(true, "timeout", null));
+
+        service.execute(event.eventId());
+
+        var saved = org.mockito.ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(events).save(saved.capture());
+        assertEquals(DeliveryStatus.FAILED, saved.getValue().deliveryStatus());
+    }
+
     private NotificationEvent pendingEvent() {
+        return pendingEventWithAttempts(0);
+    }
+
+    private NotificationEvent pendingEventWithAttempts(int attempts) {
         var now = Instant.parse("2024-03-15T11:20:18Z");
         return new NotificationEvent("EVT003", "CLIENT002", "credit_transfer", "transfer", now,
-                null, DeliveryStatus.PENDING, 0, null, null, now, now);
+                null, DeliveryStatus.PENDING, attempts, null, null, now, now);
     }
 
     private Subscription activeSubscription() {
