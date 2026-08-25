@@ -8,7 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 
 import java.net.URI;
 import java.net.InetAddress;
@@ -33,7 +34,8 @@ public class HttpWebhookClient implements WebhookClient {
                              @Value("${notification.webhook.max-concurrent:16}") int maxConcurrent) {
         this.webhookUri = URI.create(webhookUrl);
         validateDestination(webhookUri);
-        var requestFactory = new SimpleClientHttpRequestFactory();
+        var httpClient = HttpClients.custom().disableRedirectHandling().build();
+        var requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
         requestFactory.setConnectTimeout(connectTimeout);
         requestFactory.setReadTimeout(readTimeout);
         this.restClient = RestClient.builder().requestFactory(requestFactory).build();

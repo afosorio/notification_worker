@@ -14,10 +14,15 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -45,6 +50,27 @@ class ProcessNotificationEventServiceTest {
         var saved = org.mockito.ArgumentCaptor.forClass(NotificationEvent.class);
         verify(events).save(saved.capture());
         assertEquals(DeliveryStatus.COMPLETED, saved.getValue().deliveryStatus());
+    }
+
+    @Test
+    void concurrentProcessingInvokesWebhookOnlyForTheClaimWinner() throws Exception {
+        var event = pendingEvent();
+        var firstClaim = new AtomicBoolean(true);
+        when(events.findById(event.eventId())).thenReturn(Optional.of(event));
+        when(events.claimPending(event.eventId())).thenAnswer(invocation -> firstClaim.getAndSet(false));
+        when(subscriptions.findByClientId(event.clientId())).thenReturn(Optional.of(activeSubscription()));
+        when(webhook.deliver(event)).thenReturn(WebhookClient.DeliveryResult.success());
+
+        var executor = Executors.newFixedThreadPool(2);
+        var start = new CountDownLatch(1);
+        var first = executor.submit(() -> { start.await(); service.execute(event.eventId()); return null; });
+        var second = executor.submit(() -> { start.await(); service.execute(event.eventId()); return null; });
+        start.countDown();
+        first.get(5, TimeUnit.SECONDS);
+        second.get(5, TimeUnit.SECONDS);
+        executor.shutdownNow();
+
+        verify(webhook, times(1)).deliver(event);
     }
 
     private NotificationEvent pendingEvent() {
