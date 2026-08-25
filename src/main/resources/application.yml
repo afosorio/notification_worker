@@ -16,6 +16,12 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
 notification:
   queue:
     poll-delay-ms: ${NOTIFICATION_QUEUE_POLL_DELAY_MS:1000}

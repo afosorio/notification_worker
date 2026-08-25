@@ -7,6 +7,8 @@ import com.cobre.notifications.domain.DeliveryStatus;
 import com.cobre.notifications.domain.NotificationEvent;
 import com.cobre.notifications.domain.Subscription;
 import com.cobre.notifications.domain.SubscriptionStatus;
+import com.cobre.notifications.infrastructure.config.DeliveryMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -24,9 +26,10 @@ class ProcessNotificationEventServiceTest {
     private final NotificationEventRepository events = mock(NotificationEventRepository.class);
     private final SubscriptionRepository subscriptions = mock(SubscriptionRepository.class);
     private final WebhookClient webhook = mock(WebhookClient.class);
+    private final DeliveryMetrics metrics = new DeliveryMetrics(new SimpleMeterRegistry());
     private final ProcessNotificationEventService service =
             new ProcessNotificationEventService(events, subscriptions, webhook, 3,
-                    Duration.ofSeconds(1), Duration.ofMinutes(1));
+                    Duration.ofSeconds(1), Duration.ofMinutes(1), metrics);
 
     @Test
     void marksEventCompletedAfterSuccessfulDelivery() {

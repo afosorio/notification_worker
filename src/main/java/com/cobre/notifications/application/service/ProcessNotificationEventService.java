@@ -6,6 +6,9 @@ import com.cobre.notifications.application.port.out.SubscriptionRepository;
 import com.cobre.notifications.application.port.out.WebhookClient;
 import com.cobre.notifications.domain.DeliveryStatus;
 import com.cobre.notifications.domain.NotificationEvent;
+import com.cobre.notifications.infrastructure.config.DeliveryMetrics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,19 +25,23 @@ public class ProcessNotificationEventService implements ProcessNotificationEvent
     private final int maxAttempts;
     private final Duration initialDelay;
     private final Duration maxDelay;
+    private final DeliveryMetrics metrics;
+    private final Logger logger = LoggerFactory.getLogger(ProcessNotificationEventService.class);
 
     public ProcessNotificationEventService(NotificationEventRepository eventRepository,
                                            SubscriptionRepository subscriptionRepository,
                                            WebhookClient webhookClient,
                                            @org.springframework.beans.factory.annotation.Value("${notification.retry.max-attempts:3}") int maxAttempts,
                                            @org.springframework.beans.factory.annotation.Value("${notification.retry.initial-delay:PT1S}") Duration initialDelay,
-                                           @org.springframework.beans.factory.annotation.Value("${notification.retry.max-delay:PT1M}") Duration maxDelay) {
+                                           @org.springframework.beans.factory.annotation.Value("${notification.retry.max-delay:PT1M}") Duration maxDelay,
+                                           DeliveryMetrics metrics) {
         this.eventRepository = eventRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.webhookClient = webhookClient;
         this.maxAttempts = maxAttempts;
         this.initialDelay = initialDelay;
         this.maxDelay = maxDelay;
+        this.metrics = metrics;
     }
 
     @Override
@@ -62,14 +69,25 @@ public class ProcessNotificationEventService implements ProcessNotificationEvent
             return;
         }
 
+        var deliveryStarted = Instant.now();
         var result = webhookClient.deliver(event);
+        metrics.recordWebhookLatency(Duration.between(deliveryStarted, Instant.now()));
         if (result.successful()) {
             eventRepository.save(withStatus(event, DeliveryStatus.COMPLETED, null, Instant.now()));
+            metrics.recordCompleted();
+            logger.info("notification_delivery eventId={} clientId={} status=COMPLETED attemptCount={} traceId={}",
+                    event.eventId(), event.clientId(), event.attemptCount(), org.slf4j.MDC.get("traceId"));
         } else if (result.retryable() && event.attemptCount() < maxAttempts) {
             eventRepository.save(withStatus(event, DeliveryStatus.RETRY_SCHEDULED, result.errorMessage(),
                     retryAt(event.attemptCount(), result.retryAfter())));
+            metrics.recordRetryScheduled();
+            logger.warn("notification_delivery eventId={} clientId={} status=RETRY_SCHEDULED attemptCount={} traceId={}",
+                    event.eventId(), event.clientId(), event.attemptCount(), org.slf4j.MDC.get("traceId"));
         } else {
             eventRepository.save(withStatus(event, DeliveryStatus.FAILED, result.errorMessage(), Instant.now()));
+            metrics.recordFailed();
+            logger.warn("notification_delivery eventId={} clientId={} status=FAILED attemptCount={} traceId={}",
+                    event.eventId(), event.clientId(), event.attemptCount(), org.slf4j.MDC.get("traceId"));
         }
     }
 
