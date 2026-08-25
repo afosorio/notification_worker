@@ -56,5 +56,14 @@ public class NotificationEventEntity {
 
     public String getEventId() { return eventId; }
     public String getClientId() { return clientId; }
+    public String getEventType() { return eventType; }
+    public String getContent() { return content; }
+    public Instant getEventCreatedAt() { return eventCreatedAt; }
+    public Instant getDeliveryDate() { return deliveryDate; }
     public DeliveryStatus getDeliveryStatus() { return deliveryStatus; }
+    public int getAttemptCount() { return attemptCount; }
+    public Instant getNextRetryAt() { return nextRetryAt; }
+    public String getLastError() { return lastError; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
 }

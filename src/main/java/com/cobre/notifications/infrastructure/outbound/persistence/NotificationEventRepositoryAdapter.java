@@ -1,0 +1,68 @@
+package com.cobre.notifications.infrastructure.outbound.persistence;
+
+import com.cobre.notifications.application.port.out.NotificationEventRepository;
+import com.cobre.notifications.domain.DeliveryStatus;
+import com.cobre.notifications.domain.NotificationEvent;
+import com.cobre.notifications.infrastructure.outbound.persistence.entity.NotificationEventEntity;
+import com.cobre.notifications.infrastructure.outbound.persistence.repository.NotificationEventJpaRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
+
+@Repository
+public class NotificationEventRepositoryAdapter implements NotificationEventRepository {
+
+    private final NotificationEventJpaRepository repository;
+
+    public NotificationEventRepositoryAdapter(NotificationEventJpaRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<NotificationEvent> findById(String eventId) {
+        return repository.findById(eventId).map(NotificationEventEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<NotificationEvent> search(SearchCriteria criteria) {
+        var pageable = PageRequest.of(criteria.page() - 1, criteria.pageSize(),
+                Sort.by(Sort.Order.desc("eventCreatedAt"), Sort.Order.desc("eventId")));
+        var result = repository.findAll(specification(criteria), pageable);
+        return new Page<>(result.getContent().stream().map(NotificationEventEntity::toDomain).toList(),
+                criteria.page(), criteria.pageSize(), result.getTotalElements());
+    }
+
+    @Override
+    public boolean replayIfFailed(String eventId) {
+        throw new UnsupportedOperationException("Replay is implemented in the replay step");
+    }
+
+    @Override
+    public NotificationEvent save(NotificationEvent event) {
+        return repository.save(NotificationEventEntity.fromDomain(event)).toDomain();
+    }
+
+    private Specification<NotificationEventEntity> specification(SearchCriteria criteria) {
+        return (root, query, builder) -> {
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            predicates.add(builder.equal(root.get("clientId"), criteria.clientId()));
+            if (criteria.deliveryStatus() != null && !criteria.deliveryStatus().isBlank()) {
+                predicates.add(builder.equal(root.get("deliveryStatus"),
+                        DeliveryStatus.valueOf(criteria.deliveryStatus().toUpperCase())));
+            }
+            if (criteria.from() != null) {
+                predicates.add(builder.greaterThanOrEqualTo(root.get("eventCreatedAt"), criteria.from()));
+            }
+            if (criteria.to() != null) {
+                predicates.add(builder.lessThanOrEqualTo(root.get("eventCreatedAt"), criteria.to()));
+            }
+            return builder.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+    }
+}
