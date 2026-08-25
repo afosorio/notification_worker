@@ -13,6 +13,8 @@ public interface NotificationEventRepository {
 
     boolean replayIfFailed(String eventId);
 
+    boolean claimPending(String eventId);
+
     NotificationEvent save(NotificationEvent event);
 
     record SearchCriteria(

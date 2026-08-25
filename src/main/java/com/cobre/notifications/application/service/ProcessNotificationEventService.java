@@ -33,7 +33,11 @@ public class ProcessNotificationEventService implements ProcessNotificationEvent
         if (event == null) {
             return;
         }
-        if (event.deliveryStatus() != DeliveryStatus.PENDING) {
+        if (!eventRepository.claimPending(eventId)) {
+            return;
+        }
+        event = eventRepository.findById(eventId).orElse(null);
+        if (event == null) {
             return;
         }
 
@@ -58,7 +62,7 @@ public class ProcessNotificationEventService implements ProcessNotificationEvent
     private NotificationEvent withStatus(NotificationEvent event, DeliveryStatus status,
                                          String error, Instant deliveryDate) {
         return new NotificationEvent(event.eventId(), event.clientId(), event.eventType(), event.content(),
-                event.eventCreatedAt(), deliveryDate, status, event.attemptCount() + 1,
+                event.eventCreatedAt(), deliveryDate, status, event.attemptCount(),
                 null, error, event.createdAt(), Instant.now());
     }
 }

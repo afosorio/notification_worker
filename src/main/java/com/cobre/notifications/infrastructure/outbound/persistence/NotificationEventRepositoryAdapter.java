@@ -44,6 +44,12 @@ public class NotificationEventRepositoryAdapter implements NotificationEventRepo
         return repository.replayIfFailed(eventId) == 1;
     }
 
+    @Override
+    @Transactional
+    public boolean claimPending(String eventId) {
+        return repository.claimPending(eventId) == 1;
+    }
+
 
     @Override
     public NotificationEvent save(NotificationEvent event) {

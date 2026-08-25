@@ -30,6 +30,7 @@ class ProcessNotificationEventServiceTest {
     void marksEventCompletedAfterSuccessfulDelivery() {
         var event = pendingEvent();
         when(events.findById(event.eventId())).thenReturn(Optional.of(event));
+        when(events.claimPending(event.eventId())).thenReturn(true);
         when(subscriptions.findByClientId(event.clientId())).thenReturn(Optional.of(activeSubscription()));
         when(webhook.deliver(event)).thenReturn(WebhookClient.DeliveryResult.success());
 
