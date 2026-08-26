@@ -5,6 +5,8 @@ import com.cobre.notifications.application.port.out.NotificationEventRepository;
 import com.cobre.notifications.domain.NotificationEvent;
 import org.springframework.stereotype.Service;
 
+import static com.cobre.notifications.application.port.out.NotificationEventRepository.*;
+
 @Service
 public class GetNotificationEventsService implements GetNotificationEvents {
 
@@ -15,7 +17,7 @@ public class GetNotificationEventsService implements GetNotificationEvents {
     }
 
     @Override
-    public NotificationEventRepository.Page<NotificationEvent> execute(NotificationEventRepository.SearchCriteria criteria) {
+    public NotificationEventRepository.Page<NotificationEvent> execute(SearchCriteria criteria) {
         return repository.search(criteria);
     }
 }
